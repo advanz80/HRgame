@@ -16,7 +16,8 @@
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: #1a1a2e;
-            min-height: 100vh;
+            height: 100vh;
+            height: 100dvh; /* Dynamic viewport height for mobile */
             overflow: hidden;
             display: flex;
             flex-direction: column;
@@ -27,79 +28,108 @@
         #gameWrapper {
             width: 100%;
             max-width: 800px;
+            height: 100vh;
+            height: 100dvh;
             display: flex;
             flex-direction: column;
             align-items: center;
+            padding: 5px;
         }
 
         #gameCanvas {
             background: linear-gradient(180deg, #87CEEB 0%, #E0F6FF 100%);
             border-radius: 10px;
             display: block;
-            max-width: 100%;
+            flex: 1;
+            min-height: 0;
+            width: 100%;
         }
 
         /* HUD */
         #hud {
             width: 100%;
-            max-width: 800px;
             display: flex;
             justify-content: space-between;
-            padding: 10px 15px;
+            padding: 8px 10px;
             color: white;
-            font-size: 14px;
+            font-size: 12px;
+            flex-shrink: 0;
         }
 
         .hud-item {
             background: rgba(0,0,0,0.5);
-            padding: 8px 15px;
-            border-radius: 20px;
+            padding: 6px 12px;
+            border-radius: 15px;
         }
 
         /* Mobile Controls */
         #mobileControls {
             width: 100%;
-            max-width: 800px;
             display: flex;
             justify-content: space-between;
-            padding: 15px;
-            gap: 20px;
+            padding: 10px 15px;
+            padding-bottom: max(10px, env(safe-area-inset-bottom));
+            gap: 15px;
+            flex-shrink: 0;
         }
 
         .control-group {
             display: flex;
-            gap: 10px;
+            gap: 8px;
         }
 
         .control-btn {
-            width: 70px;
-            height: 70px;
+            width: 60px;
+            height: 60px;
             border-radius: 50%;
-            border: 3px solid rgba(255,255,255,0.3);
-            background: rgba(255,255,255,0.15);
+            border: 3px solid rgba(255,255,255,0.4);
+            background: rgba(255,255,255,0.2);
             color: white;
-            font-size: 24px;
+            font-size: 22px;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
             user-select: none;
+            -webkit-user-select: none;
             transition: all 0.1s;
         }
 
+        @media (min-width: 500px) {
+            .control-btn {
+                width: 70px;
+                height: 70px;
+                font-size: 26px;
+            }
+        }
+
         .control-btn:active, .control-btn.active {
-            background: rgba(255,255,255,0.4);
-            transform: scale(0.95);
+            background: rgba(255,255,255,0.5);
+            transform: scale(0.92);
         }
 
         .control-btn.action {
-            background: rgba(233, 69, 96, 0.6);
+            background: rgba(233, 69, 96, 0.7);
             border-color: #e94560;
         }
 
         .control-btn.jump {
-            background: rgba(78, 204, 163, 0.6);
+            background: rgba(78, 204, 163, 0.7);
             border-color: #4ecca3;
+        }
+
+        .control-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .control-label {
+            font-size: 10px;
+            color: rgba(255,255,255,0.7);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         /* Screens */
@@ -109,15 +139,19 @@
             left: 0;
             width: 100%;
             height: 100%;
+            height: 100dvh;
             display: none;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
+            justify-content: safe center;
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
             color: white;
             padding: 20px;
+            padding-top: max(20px, env(safe-area-inset-top));
+            padding-bottom: max(20px, env(safe-area-inset-bottom));
             text-align: center;
             z-index: 100;
+            overflow-y: auto;
         }
 
         .screen.active {
@@ -386,12 +420,24 @@
         <canvas id="gameCanvas"></canvas>
         <div id="mobileControls">
             <div class="control-group">
-                <button class="control-btn" id="btnLeft">◀</button>
-                <button class="control-btn" id="btnRight">▶</button>
+                <div class="control-wrapper">
+                    <button class="control-btn" id="btnLeft">◀</button>
+                    <span class="control-label">Links</span>
+                </div>
+                <div class="control-wrapper">
+                    <button class="control-btn" id="btnRight">▶</button>
+                    <span class="control-label">Rechts</span>
+                </div>
             </div>
             <div class="control-group">
-                <button class="control-btn action" id="btnAttack">⚡</button>
-                <button class="control-btn jump" id="btnJump">▲</button>
+                <div class="control-wrapper">
+                    <button class="control-btn action" id="btnAttack">⚡</button>
+                    <span class="control-label">AI Aanval</span>
+                </div>
+                <div class="control-wrapper">
+                    <button class="control-btn jump" id="btnJump">▲</button>
+                    <span class="control-label">Spring</span>
+                </div>
             </div>
         </div>
     </div>
@@ -587,12 +633,10 @@
         }
 
         function resizeCanvas() {
-            const wrapper = document.getElementById('gameWrapper');
-            const maxWidth = Math.min(800, window.innerWidth - 20);
-            const maxHeight = Math.min(450, window.innerHeight * 0.5);
-
-            canvas.width = maxWidth;
-            canvas.height = maxHeight;
+            // Get the actual rendered size of the canvas element
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
         }
 
         // ==================== CONTROLS ====================
@@ -615,32 +659,60 @@
                 if (e.key === 'e' || e.key === 'f') keys.attack = false;
             });
 
-            // Mobile buttons
+            // Mobile buttons - improved touch handling
             const btnLeft = document.getElementById('btnLeft');
             const btnRight = document.getElementById('btnRight');
             const btnJump = document.getElementById('btnJump');
             const btnAttack = document.getElementById('btnAttack');
 
             const addTouch = (btn, key) => {
+                // Touch events
                 btn.addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    keys[key] = true;
+                    btn.classList.add('active');
+                }, { passive: false });
+
+                btn.addEventListener('touchend', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    keys[key] = false;
+                    btn.classList.remove('active');
+                }, { passive: false });
+
+                btn.addEventListener('touchcancel', (e) => {
+                    keys[key] = false;
+                    btn.classList.remove('active');
+                }, { passive: false });
+
+                // Mouse events (for desktop testing)
+                btn.addEventListener('mousedown', (e) => {
                     e.preventDefault();
                     keys[key] = true;
                     btn.classList.add('active');
                 });
-                btn.addEventListener('touchend', (e) => {
-                    e.preventDefault();
+
+                btn.addEventListener('mouseup', (e) => {
                     keys[key] = false;
                     btn.classList.remove('active');
                 });
-                btn.addEventListener('mousedown', () => { keys[key] = true; btn.classList.add('active'); });
-                btn.addEventListener('mouseup', () => { keys[key] = false; btn.classList.remove('active'); });
-                btn.addEventListener('mouseleave', () => { keys[key] = false; btn.classList.remove('active'); });
+
+                btn.addEventListener('mouseleave', () => {
+                    keys[key] = false;
+                    btn.classList.remove('active');
+                });
             };
 
             addTouch(btnLeft, 'left');
             addTouch(btnRight, 'right');
             addTouch(btnJump, 'jump');
             addTouch(btnAttack, 'attack');
+
+            // Prevent default touch behavior on the game wrapper
+            document.getElementById('gameWrapper').addEventListener('touchmove', (e) => {
+                e.preventDefault();
+            }, { passive: false });
         }
 
         // ==================== GAME FLOW ====================
