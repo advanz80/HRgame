@@ -635,8 +635,9 @@
         function resizeCanvas() {
             // Get the actual rendered size of the canvas element
             const rect = canvas.getBoundingClientRect();
-            canvas.width = rect.width;
-            canvas.height = rect.height;
+            // Ensure minimum size and valid dimensions
+            canvas.width = Math.max(300, rect.width || 800);
+            canvas.height = Math.max(200, rect.height || 400);
         }
 
         // ==================== CONTROLS ====================
@@ -748,26 +749,45 @@
         function startLevel() {
             showScreen('none');
             document.getElementById('gameWrapper').style.display = 'flex';
-            loadLevel(gameState.currentLevel);
-            gameState.running = true;
-            requestAnimationFrame(gameLoop);
+
+            // Important: resize canvas AFTER gameWrapper is visible
+            // Use requestAnimationFrame to ensure layout is complete
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    resizeCanvas();
+                    loadLevel(gameState.currentLevel);
+                    gameState.running = true;
+                    requestAnimationFrame(gameLoop);
+                });
+            });
         }
 
         function loadLevel(levelIndex) {
             const level = LEVELS[levelIndex];
 
+            // Scale factor based on canvas height (designed for 450px)
+            const baseHeight = 450;
+            const scale = canvas.height / baseHeight;
+
             player.x = 50;
-            player.y = 250;
+            player.y = 200 * scale;
             player.vx = 0;
             player.vy = 0;
             player.onGround = false;
 
             camera.x = 0;
 
-            platforms = level.platforms.map(p => ({ ...p }));
+            // Scale platform positions
+            platforms = level.platforms.map(p => ({
+                ...p,
+                y: p.y * scale,
+                h: p.h * scale
+            }));
+
+            // Scale enemy positions
             enemies = level.enemySpawns.map(e => ({
                 x: e.x,
-                y: e.y,
+                y: e.y * scale,
                 w: e.boss ? 60 : 40,
                 h: e.boss ? 70 : 50,
                 type: e.type,
@@ -781,7 +801,7 @@
 
             goal = {
                 x: level.goalX,
-                y: 270,
+                y: 270 * scale,
                 w: 80,
                 h: 80
             };
@@ -1006,9 +1026,10 @@
             if (gameState.health <= 0) {
                 showGameOver();
             } else {
-                // Reset player position
+                // Reset player position (scale Y based on canvas height)
+                const scale = canvas.height / 450;
                 player.x = 50;
-                player.y = 250;
+                player.y = 200 * scale;
                 player.vx = 0;
                 player.vy = 0;
                 camera.x = 0;
