@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HR Quest: De weg naar Driessen Groep</title>
+    <title>HR Quest: De Weg naar Driessen</title>
     <style>
         * {
             margin: 0;
@@ -341,7 +341,7 @@
     <div id="startScreen" class="screen active">
         <div class="character-preview">👩‍💼</div>
         <h1 class="title">HR Quest</h1>
-        <p class="subtitle">De weg naar Driessen Groep</p>
+        <p class="subtitle">De Weg naar Driessen</p>
         <p class="description">
             Spring door de wereld van HR en versla de vervelende taken die je energie opslurpen!
             Gebruik AI-krachten om vijanden te verslaan en bereik je einddoel:
@@ -350,7 +350,7 @@
         <div class="controls-info">
             <div class="control-item"><span>◀ ▶</span> Bewegen</div>
             <div class="control-item"><span>▲</span> Springen</div>
-            <div class="control-item"><span>⚡of F </span> AI Aanval</div>
+            <div class="control-item"><span>⚡</span> AI Aanval</div>
             <div class="control-item"><span>💀</span> Spring op vijanden</div>
         </div>
         <button class="btn btn-primary" onclick="startGame()">Start Avontuur!</button>
@@ -732,7 +732,8 @@
                 score: 0,
                 health: 3,
                 defeated: 0,
-                aiPower: 100
+                aiPower: 100,
+                damaged: false
             };
             showLevelIntro(0);
         }
@@ -1020,20 +1021,57 @@
         }
 
         function takeDamage() {
+            // Prevent multiple damage triggers
+            if (gameState.damaged) return;
+            gameState.damaged = true;
+
             gameState.health--;
             updateHUD();
 
-            if (gameState.health <= 0) {
-                showGameOver();
-            } else {
-                // Reset player position (scale Y based on canvas height)
-                const scale = canvas.height / 450;
-                player.x = 50;
-                player.y = 200 * scale;
-                player.vx = 0;
-                player.vy = 0;
-                camera.x = 0;
-            }
+            // Freeze the game briefly so player sees what happened
+            gameState.running = false;
+
+            // Show damage flash
+            showDamageFlash();
+
+            setTimeout(() => {
+                gameState.damaged = false;
+
+                if (gameState.health <= 0) {
+                    showGameOver();
+                } else {
+                    // Reset player position (scale Y based on canvas height)
+                    const scale = canvas.height / 450;
+                    player.x = 50;
+                    player.y = 200 * scale;
+                    player.vx = 0;
+                    player.vy = 0;
+                    camera.x = 0;
+
+                    // Resume the game
+                    gameState.running = true;
+                    requestAnimationFrame(gameLoop);
+                }
+            }, 1000); // 1 second pause
+        }
+
+        function showDamageFlash() {
+            // Draw a red overlay on the canvas
+            ctx.fillStyle = 'rgba(255, 0, 0, 0.4)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Show "OEPS!" text
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 48px Arial';
+            ctx.textAlign = 'center';
+            ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+            ctx.lineWidth = 4;
+            ctx.strokeText('OEPS!', canvas.width / 2, canvas.height / 2);
+            ctx.fillText('OEPS!', canvas.width / 2, canvas.height / 2);
+
+            // Show remaining lives
+            ctx.font = '24px Arial';
+            ctx.fillText(`❤️ ${gameState.health} leven${gameState.health !== 1 ? 's' : ''} over`, canvas.width / 2, canvas.height / 2 + 40);
         }
 
         function checkCollision(a, b) {
@@ -1080,7 +1118,7 @@
                     ctx.fillText('🏢', goal.x + goal.w / 2, goal.y + 40);
                     ctx.font = '16px Arial';
                     ctx.fillStyle = '#ffd700';
-                    ctx.fillText('Driessen Groep', goal.x + goal.w / 2, goal.y + 60);
+                    ctx.fillText('Driessen', goal.x + goal.w / 2, goal.y + 60);
                 } else {
                     ctx.fillText('🚪', goal.x + goal.w / 2, goal.y + 40);
                 }
