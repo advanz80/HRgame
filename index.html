@@ -453,6 +453,263 @@
             aiRechargeRate: 0.3
         };
 
+        // ==================== AUDIO SYSTEM ====================
+        let audioCtx = null;
+        let musicPlaying = false;
+        let musicGain = null;
+        let musicOscillators = [];
+
+        function initAudio() {
+            if (audioCtx) return;
+            try {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                musicGain = audioCtx.createGain();
+                musicGain.gain.value = 0.15;
+                musicGain.connect(audioCtx.destination);
+            } catch (e) {
+                console.log('Audio not supported');
+            }
+        }
+
+        // Sound Effects
+        function playSound(type) {
+            if (!audioCtx) return;
+
+            const now = audioCtx.currentTime;
+
+            switch(type) {
+                case 'jump':
+                    playSweep(300, 600, 0.15, 'sine');
+                    break;
+                case 'shoot':
+                    playLaser();
+                    break;
+                case 'hit':
+                    playExplosion();
+                    break;
+                case 'damage':
+                    playDamage();
+                    break;
+                case 'levelComplete':
+                    playVictoryJingle();
+                    break;
+                case 'gameOver':
+                    playGameOverSound();
+                    break;
+                case 'collect':
+                    playSweep(400, 800, 0.1, 'sine');
+                    break;
+            }
+        }
+
+        function playSweep(startFreq, endFreq, duration, waveType) {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            osc.type = waveType;
+            osc.frequency.setValueAtTime(startFreq, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(endFreq, audioCtx.currentTime + duration);
+
+            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        function playLaser() {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(110, audioCtx.currentTime + 0.15);
+
+            gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.15);
+        }
+
+        function playExplosion() {
+            // Use noise for explosion
+            const bufferSize = audioCtx.sampleRate * 0.2;
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+            }
+
+            const noise = audioCtx.createBufferSource();
+            const gain = audioCtx.createGain();
+            const filter = audioCtx.createBiquadFilter();
+
+            noise.buffer = buffer;
+            filter.type = 'lowpass';
+            filter.frequency.value = 1000;
+
+            gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+
+            noise.connect(filter);
+            filter.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            noise.start();
+
+            // Add a bass thump
+            const osc = audioCtx.createOscillator();
+            const oscGain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.1);
+            oscGain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+            oscGain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+            osc.connect(oscGain);
+            oscGain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.1);
+        }
+
+        function playDamage() {
+            // Descending tone for damage
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.3);
+
+            gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.3);
+        }
+
+        function playVictoryJingle() {
+            const notes = [523, 659, 784, 1047]; // C, E, G, C
+            notes.forEach((freq, i) => {
+                setTimeout(() => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.value = freq;
+                    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.3);
+                }, i * 150);
+            });
+        }
+
+        function playGameOverSound() {
+            const notes = [392, 349, 330, 262]; // G, F, E, C (descending)
+            notes.forEach((freq, i) => {
+                setTimeout(() => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.value = freq;
+                    gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.4);
+                }, i * 200);
+            });
+        }
+
+        // Background Music - Simple chiptune-style loop
+        function startMusic() {
+            if (!audioCtx || musicPlaying) return;
+            musicPlaying = true;
+
+            // Simple melody pattern (pentatonic scale, upbeat)
+            const melody = [
+                262, 294, 330, 392, 440, 392, 330, 294,
+                330, 392, 440, 523, 440, 392, 330, 392,
+                294, 330, 392, 440, 392, 330, 294, 262,
+                330, 294, 262, 294, 330, 392, 440, 392
+            ];
+
+            // Bass pattern
+            const bass = [
+                131, 131, 165, 165, 196, 196, 165, 165,
+                131, 131, 165, 165, 196, 196, 220, 220
+            ];
+
+            let melodyIndex = 0;
+            let bassIndex = 0;
+            const noteLength = 0.15;
+            const tempo = 180; // ms per note
+
+            function playMelodyNote() {
+                if (!musicPlaying || !audioCtx) return;
+
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc.type = 'square';
+                osc.frequency.value = melody[melodyIndex];
+
+                gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + noteLength);
+
+                osc.connect(gain);
+                gain.connect(musicGain);
+
+                osc.start();
+                osc.stop(audioCtx.currentTime + noteLength);
+
+                melodyIndex = (melodyIndex + 1) % melody.length;
+                setTimeout(playMelodyNote, tempo);
+            }
+
+            function playBassNote() {
+                if (!musicPlaying || !audioCtx) return;
+
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc.type = 'triangle';
+                osc.frequency.value = bass[bassIndex];
+
+                gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + noteLength * 1.8);
+
+                osc.connect(gain);
+                gain.connect(musicGain);
+
+                osc.start();
+                osc.stop(audioCtx.currentTime + noteLength * 2);
+
+                bassIndex = (bassIndex + 1) % bass.length;
+                setTimeout(playBassNote, tempo * 2);
+            }
+
+            playMelodyNote();
+            playBassNote();
+        }
+
+        function stopMusic() {
+            musicPlaying = false;
+        }
+
         // ==================== LEVEL DATA ====================
         const LEVELS = [
             {
@@ -726,6 +983,9 @@
         }
 
         function startGame() {
+            // Initialize audio on first user interaction
+            initAudio();
+
             gameState = {
                 running: false,
                 currentLevel: 0,
@@ -750,6 +1010,9 @@
         function startLevel() {
             showScreen('none');
             document.getElementById('gameWrapper').style.display = 'flex';
+
+            // Start background music
+            startMusic();
 
             // Important: resize canvas AFTER gameWrapper is visible
             // Use requestAnimationFrame to ensure layout is complete
@@ -814,6 +1077,9 @@
         }
 
         function nextLevel() {
+            stopMusic();
+            playSound('levelComplete');
+
             gameState.currentLevel++;
             if (gameState.currentLevel >= LEVELS.length) {
                 showVictory();
@@ -824,6 +1090,9 @@
 
         function showVictory() {
             gameState.running = false;
+            stopMusic();
+            playSound('levelComplete');
+
             document.getElementById('victoryScore').textContent = gameState.score;
             document.getElementById('victoryDefeated').textContent = gameState.defeated;
             showScreen('victoryScreen');
@@ -832,6 +1101,9 @@
 
         function showGameOver() {
             gameState.running = false;
+            stopMusic();
+            playSound('gameOver');
+
             document.getElementById('goScore').textContent = gameState.score;
             document.getElementById('goDefeated').textContent = gameState.defeated;
             showScreen('gameOverScreen');
@@ -872,6 +1144,7 @@
             if (keys.jump && player.onGround) {
                 player.vy = -CONFIG.jumpForce;
                 player.onGround = false;
+                playSound('jump');
             }
 
             // AI Attack
@@ -975,6 +1248,8 @@
         }
 
         function fireAIProjectile() {
+            playSound('shoot');
+
             aiProjectiles.push({
                 x: player.x + (player.facingRight ? player.w : 0),
                 y: player.y + player.h / 2 - 10,
@@ -1000,6 +1275,9 @@
             enemy.hp--;
             gameState.score += 10;
 
+            // Play hit sound
+            playSound('hit');
+
             // Particles
             for (let i = 0; i < 8; i++) {
                 particles.push({
@@ -1024,6 +1302,9 @@
             // Prevent multiple damage triggers
             if (gameState.damaged) return;
             gameState.damaged = true;
+
+            // Play damage sound
+            playSound('damage');
 
             gameState.health--;
             updateHUD();
